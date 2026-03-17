@@ -1122,3 +1122,125 @@ export async function setNumbersToTokens() {
         ui.notifications.warn(`No one token was renamed`)
     }
 }
+
+function getAllCoordinates(x, y, width) {
+    const size = canvas.dimensions.size;
+
+    const startY = y;
+    const arr = [];
+
+    for (let i = 0; i < width; i++) {
+        for (let j = 0; j < width; j++) {
+            arr.push({x, y});
+            y += size;
+        }
+        y = startY;
+        x += size;
+    }
+    return arr
+}
+
+const newCoords = [
+    {x: -1, y: 0},
+    {x: -2, y: 0},
+    {x: -3, y: 0},
+    {x: 1, y: 0},
+    {x: 2, y: 0},
+    {x: 3, y: 0},
+
+    {x: -1, y: 1},
+    {x: -2, y: 1},
+    {x: -3, y: 1},
+    {x: 0, y: 1},
+    {x: 1, y: 1},
+    {x: 2, y: 1},
+    {x: 3, y: 1},
+    {x: -1, y: -1},
+    {x: -2, y: -1},
+    {x: -3, y: -1},
+    {x: 0, y: -1},
+    {x: 1, y: -1},
+    {x: 2, y: -1},
+    {x: 3, y: -1},
+
+    {x: -1, y: 2},
+    {x: -2, y: 2},
+    {x: 0, y: 2},
+    {x: 1, y: 2},
+    {x: 2, y: 2},
+    {x: -1, y: -2},
+    {x: -2, y: -2},
+    {x: 0, y: -2},
+    {x: 1, y: -2},
+    {x: 2, y: -2},
+
+    {x: -1, y: 3},
+    {x: 0, y: 3},
+    {x: 1, y: 3},
+    {x: -1, y: -3},
+    {x: 0, y: -3},
+    {x: 1, y: -3},
+]
+
+export async function formUp(token) {
+    if (!game.user.isGM) {
+        ui.notifications.warn("Only GM can run script");
+        return
+    }
+    if (!token) {
+        ui.notifications.warn("Please select a token to form up a troop.");
+        return;
+    }
+    if (!token.document?.flags?.pf2e?.troop?.id) {
+        ui.notifications.warn("Please select a troop token.");
+        return;
+    }
+    let canvasDistance = canvas.dimensions?.size ?? 100
+
+    const tokensForUpdate = token.scene.tokens.contents
+        .filter(t => t !== token.document)
+        .filter(t => t?.flags?.pf2e?.troop?.id === token.document?.flags?.pf2e?.troop?.id)
+        .map(t => t.object)
+
+    const occupied = token.scene.tokens
+        .filter(t => !tokensForUpdate.includes(t.object) && t.object !== token)
+        .map(t => getAllCoordinates(t.x, t.y, t.width)).flat()
+        .map(a => JSON.stringify(a));
+
+    let step = canvasDistance * 2
+
+    let newPossibleLocations = foundry.utils.deepClone(newCoords).map(c => {
+        return {
+            x: token.x + c.x * step,
+            cx: token.center.x + c.x * step,
+            y: token.y + c.y * step,
+            cy: token.center.y + c.y * step,
+            width: token.document.width,
+        }
+    });
+
+    let checkWalls = newPossibleLocations.filter(coo => {
+        return !CONFIG.Canvas.polygonBackends.move.testCollision(token.center, {x: coo.cx, y: coo.cy}, {
+            type: 'move',
+            mode: 'any'
+        })
+    });
+
+    let availableLocations = checkWalls.filter(target => {
+        let all = getAllCoordinates(target.x, target.y, target.width)
+        return all.every(a => !occupied.includes(JSON.stringify({x: a.x, y: a.y})));
+    }).sort((p1, p2) => {
+        const dist1 = Math.hypot(p1.x - token.x, p1.y - token.y);
+        const dist2 = Math.hypot(p2.x - token.x, p2.y - token.y);
+        return dist1 - dist2;
+    });
+
+    for (let i = 0; i < tokensForUpdate.length; i++) {
+        if (!availableLocations.length) {
+            continue
+        }
+        let ttt = tokensForUpdate[i];
+        let nn = availableLocations.shift();
+        await ttt.document.update({x: nn.x, y: nn.y})
+    }
+}

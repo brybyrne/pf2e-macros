@@ -1,3 +1,6 @@
+### Version 1.0.25
+- Macro -- Troop FormUp
+
 ### Version 1.0.24
 - Macro -- Aid -- Add spellcasting
 
