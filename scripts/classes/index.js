@@ -29,7 +29,7 @@ import {
     repairParty,
     scareToDeath,
     targetIsOffGuard,
-    flowingSpiritStrike, retch, distractingPerformance, crescentSpray, twinFlowingSpiritStrike, setNumbersToTokens, formUp
+    flowingSpiritStrike, retch, distractingPerformance, crescentSpray, twinFlowingSpiritStrike, setNumbersToTokens, formUp, changeAlliance
 } from "./general.js";
 
 export function initMacros() {
@@ -85,5 +85,6 @@ export function initMacros() {
         "crescentSpray": crescentSpray,
         "setNumbersToTokens": setNumbersToTokens,
         "formUp": formUp,
+        "changeAlliance": changeAlliance,
     })
 }

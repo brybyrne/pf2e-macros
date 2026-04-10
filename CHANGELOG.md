@@ -1,3 +1,6 @@
+### Version 1.0.26
+- Macro -- Change alliance
+
 ### Version 1.0.25
 - Macro -- Troop FormUp
 

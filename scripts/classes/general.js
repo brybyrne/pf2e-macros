@@ -1182,6 +1182,54 @@ const newCoords = [
     {x: 1, y: -3},
 ]
 
+export async function changeAlliance() {
+
+    let selectedActors = game.user.getActiveTokens().map(t=>t.actor).filter(a=>!!a);
+    if (!selectedActors.length) {
+        ui.notifications.info(`Need to select at least 1 actor`);
+        return;
+    }
+
+    let {map} = await foundry.applications.api.DialogV2.wait({
+        window: {title: "Change Alliance of selected actors"},
+        width: 550,
+        content: `<label>Select Alliance</label>
+                <select id="map">
+                <option value="neutral">${game.i18n.localize("PF2E.Actor.Creature.Alliance.Neutral")}</option>
+                <option value="opposition">${game.i18n.localize("PF2E.Actor.Creature.Alliance.Opposition")}</option>
+                <option value="party">${game.i18n.localize("PF2E.Actor.Creature.Alliance.Party")}</option>
+            </select><br/>`,
+        buttons: [{
+            action: "ok", label: "Select", icon: "<i class='fa-solid fa-hand-fist'></i>",
+            callback: (event, button, form) => {
+                let el = isV12() ? $(form) : $(form.element);
+                return {
+                    map: el.find("#map").val(),
+                }
+            }
+        }, {
+            action: "cancel",
+            label: "Cancel",
+            icon: "<i class='fa-solid fa-ban'></i>",
+        }],
+        default: "ok"
+    });
+
+    if (map === undefined) {
+        return;
+    }
+
+    if (map === "neutral") {
+        map = null
+    }
+
+    selectedActors.forEach(actor => {
+        actor.update({
+            "system.details.alliance": map
+        })
+    })
+}
+
 export async function formUp(token) {
     if (!game.user.isGM) {
         ui.notifications.warn("Only GM can run script");
