@@ -1,9 +1,32 @@
 import {DEFAULT_FAVORITE, moduleName} from "../const.js";
 
-export class FavoriteWeapons extends FormApplication {
-    constructor(options = {}) {
-        super(options);
-    }
+const {ApplicationV2, HandlebarsApplicationMixin} = foundry.applications.api;
+
+export class FavoriteWeapons extends HandlebarsApplicationMixin(ApplicationV2) {
+    static DEFAULT_OPTIONS = {
+        id: `${moduleName}-favorite-weapons`,
+        classes: [moduleName],
+        position: {
+            width: 500
+        },
+        window: {
+            title: "Favorite weapons"
+        },
+        form: {
+            closeOnSubmit: true,
+            submitOnChange: false,
+            handler: async function (event, form) {
+                return this._updateObject(event, Object.fromEntries(new FormData(form).entries()));
+            }
+        }
+    };
+
+    static PARTS = {
+        form: {
+            root: true,
+            template: `modules/${moduleName}/templates/weapons.hbs`
+        }
+    };
 
     getFavoriteWeapons() {
         return foundry.utils.mergeObject(foundry.utils.deepClone(DEFAULT_FAVORITE),
@@ -11,29 +34,10 @@ export class FavoriteWeapons extends FormApplication {
         );
     }
 
-    async getData() {
-        return foundry.utils.mergeObject(super.getData(), {
+    async _prepareContext() {
+        return {
             weapons: this.getFavoriteWeapons()
-        });
-    }
-
-    static get defaultOptions() {
-        return foundry.utils.mergeObject(super.defaultOptions, {
-            title: "Favorite weapons",
-            id: `${moduleName}-favorite-weapons`,
-            classes: [moduleName],
-            template: `modules/${moduleName}/templates/weapons.hbs`,
-            width: 500,
-            height: 'auto',
-            closeOnSubmit: true,
-            submitOnChange: false,
-            resizable: true,
-            dragDrop: [],
-        });
-    }
-
-    activateListeners($html) {
-        super.activateListeners($html);
+        };
     }
 
     async _updateObject(_event, data) {
@@ -41,6 +45,6 @@ export class FavoriteWeapons extends FormApplication {
         for (let w in data) {
             checkData.find(c => c.id === w).value = data[w]
         }
-        game.settings.set(moduleName, "favoriteWeapons", checkData)
+        await game.settings.set(moduleName, "favoriteWeapons", checkData)
     }
 }

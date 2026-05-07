@@ -4,7 +4,7 @@ import {
     eventSkipped,
     favoriteWeapon,
     getMap,
-    isV12,
+    readDialogValue,
     removeEffectFromActor,
     selectIf,
     setEffectToActor
@@ -72,11 +72,10 @@ export async function twinFeint(actor) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    map: parseInt(el.find("#map").val()),
-                    weapon1: parseInt(el.find("#fob1").val()),
-                    weapon2: parseInt(el.find("#fob2").val()),
+                    map: parseInt(readDialogValue(form, "#map")),
+                    weapon1: parseInt(readDialogValue(form, "#fob1")),
+                    weapon2: parseInt(readDialogValue(form, "#fob2")),
                 }
             }
         }, {

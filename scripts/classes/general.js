@@ -11,7 +11,9 @@ import {
     hasFeatBySourceId,
     increaseConditionForActor,
     isGM,
-    isV12,
+    readDialogChecked,
+    readDialogSelectedDataset,
+    readDialogValue,
     rollSkipDialog,
     selectIf,
     setEffectToActor,
@@ -50,8 +52,8 @@ export async function gmCounteract_step1(actorUuid, isFixed, fixedValue, userId)
         </p>
     `
 
-    const {dc, cl, tl, idx} = await Dialog.wait({
-        title: "Counteract",
+    const {dc, cl, tl, idx} = await foundry.applications.api.DialogV2.wait({
+        window: {title: "Counteract"},
         content: `
         <p class="">
             <strong>DC</strong>
@@ -67,26 +69,26 @@ export async function gmCounteract_step1(actorUuid, isFixed, fixedValue, userId)
         </p>
         ${spellcast}
     `,
-        buttons: {
-            ok: {
-                label: "Counteract",
-                icon: "<i class='fa-solid fa-hand'></i>",
-                callback: (html) => {
-                    return {
-                        dc: Number(html.find('.dc').val()) ?? 0,
-                        cl: Number(html.find('.cl').val()) ?? 0,
-                        tl: Number(html.find('.tl').val()) ?? 0,
-                        idx: Number(html.find("#fob1").val()),
-                    }
+        buttons: [{
+            action: "ok",
+            label: "Counteract",
+            icon: "<i class='fa-solid fa-hand'></i>",
+            callback: (event, button, form) => {
+                return {
+                    dc: Number(readDialogValue(form, ".dc")) ?? 0,
+                    cl: Number(readDialogValue(form, ".cl")) ?? 0,
+                    tl: Number(readDialogValue(form, ".tl")) ?? 0,
+                    idx: Number(readDialogValue(form, "#fob1")),
                 }
-            },
-            cancel: {
-                label: "Cancel",
-                icon: "<i class='fa-solid fa-ban'></i>",
             }
-        },
-        default: "ok"
-    }, {}, {width: 300});
+        }, {
+            action: "cancel",
+            label: "Cancel",
+            icon: "<i class='fa-solid fa-ban'></i>",
+        }],
+        default: "ok",
+        position: {width: 300}
+    });
 
     if (!dc) {
         return
@@ -106,14 +108,14 @@ export async function gmCounteract_step2(actorUuid, dc, cl, tl, idx, fixedValue)
 
 async function counteractFailMessage() {
     await ChatMessage.create({
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+        style: CONST.CHAT_MESSAGE_STYLES.OOC,
         content: `Counteract failed`
     });
 }
 
 async function counteractSuccessMessage() {
     await ChatMessage.create({
-        type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+        style: CONST.CHAT_MESSAGE_STYLES.OOC,
         content: `Counteract succeed`
     });
 }
@@ -243,7 +245,7 @@ export async function scareToDeath(actor) {
         });
         if (cfResult.degreeOfSuccess === 0) {
             ChatMessage.create({
-                type: CONST.CHAT_MESSAGE_TYPES.OTHER,
+                style: CONST.CHAT_MESSAGE_STYLES.OOC,
                 content: `${game.user.targets.first().actor.name} died because of Scare to Death`
             });
         } else {
@@ -302,12 +304,11 @@ export async function aidBase(actor, criticalFailure, success, criticalSuccess, 
         buttons: [{
             action: "ok", label: "Use", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    id: el.find("#actions").val(),
-                    isSkill: el.find("#actions").find('option:selected').data('skill'),
-                    isSpellCast: el.find("#actions").find('option:selected').data('spellcast'),
-                    dc: parseInt(el.find('.dc').val()) ?? defDC
+                    id: readDialogValue(form, "#actions"),
+                    isSkill: readDialogSelectedDataset(form, "#actions", "skill") === "true",
+                    isSpellCast: readDialogSelectedDataset(form, "#actions", "spellcast") === "true",
+                    dc: parseInt(readDialogValue(form, ".dc")) ?? defDC
                 }
 
             }
@@ -397,31 +398,31 @@ export async function shapeshifting(token) {
         ui.notifications.info(`Select your token before using this macro`);
     }
 
-    let {imageLink} = await Dialog.wait({
-        title: "Link to image",
+    let {imageLink} = await foundry.applications.api.DialogV2.wait({
+        window: {title: "Link to image"},
         content: `
         <p class="">
             <strong>Image link</strong>
             <input class='dc' type="text">
         </p>
     `,
-        buttons: {
-            ok: {
-                label: "Apply",
-                icon: "<i class='fa-solid fa-hand'></i>",
-                callback: (html) => {
-                    return {
-                        imageLink: html.find('.dc').val(),
-                    }
+        buttons: [{
+            action: "ok",
+            label: "Apply",
+            icon: "<i class='fa-solid fa-hand'></i>",
+            callback: (event, button, form) => {
+                return {
+                    imageLink: readDialogValue(form, ".dc"),
                 }
-            },
-            cancel: {
-                label: "Cancel",
-                icon: "<i class='fa-solid fa-ban'></i>",
             }
-        },
-        default: "ok"
-    }, {}, {width: 300});
+        }, {
+            action: "cancel",
+            label: "Cancel",
+            icon: "<i class='fa-solid fa-ban'></i>",
+        }],
+        default: "ok",
+        position: {width: 300}
+    });
     if (!imageLink) {
         return;
     }
@@ -536,25 +537,27 @@ export async function explorationActivity(actor) {
     });
     d.addEventListener('render', (e) => {
         const action = async (event) => {
-            let button = $(event.currentTarget);
-            let sourceId = button.data().id;
+            let button = event.currentTarget;
+            let sourceId = button.dataset.id;
             let exploration = actor.system.exploration ?? [];
             if (!actor.itemTypes.action.find(a => a.sourceId === sourceId)) {//need to add
                 await actor.createEmbeddedDocuments("Item", [(await fromUuid(sourceId)).toObject()])
             }
             let curId = actor.itemTypes.action.find(a => a.sourceId === sourceId)?.id;
-            if (button.hasClass('active')) {
+            if (button.classList.contains('active')) {
                 exploration = exploration.filter(i => i !== curId);
-                button.removeClass('active')
+                button.classList.remove('active')
             } else {
                 exploration.push(curId)
-                button.addClass('active')
+                button.classList.add('active')
             }
             await actor.update({"system.exploration": exploration});
             ui.notifications.info("Exploration activities were changed");
         };
 
-        $(e.target.element).find(".pf2e-exploration-activity-list span").on('click', action)
+        e.target.element.querySelectorAll(".pf2e-exploration-activity-list span").forEach((button) => {
+            button.addEventListener("click", action);
+        });
     });
     d.render(true);
 }
@@ -614,8 +617,8 @@ export async function counteract(actor) {
 
     let options = actor.itemTypes.spellcastingEntry.map((w, i) => `<option value=${i}>${w.name}</option>`).join('')
 
-    const {dc, cl, tl, idx} = await Dialog.wait({
-        title: "Counteract",
+    const {dc, cl, tl, idx} = await foundry.applications.api.DialogV2.wait({
+        window: {title: "Counteract"},
         content: `
             <p class="">
                 <strong>DC</strong>
@@ -636,26 +639,26 @@ export async function counteract(actor) {
                 </select>
             </p>
         `,
-        buttons: {
-            ok: {
-                label: "Counteract",
-                icon: "<i class='fa-solid fa-hand'></i>",
-                callback: (html) => {
-                    return {
-                        dc: Number(html.find('.dc').val()) ?? 0,
-                        cl: Number(html.find('.cl').val()) ?? 0,
-                        tl: Number(html.find('.tl').val()) ?? 0,
-                        idx: Number(html.find("#fob1").val()),
-                    }
+        buttons: [{
+            action: "ok",
+            label: "Counteract",
+            icon: "<i class='fa-solid fa-hand'></i>",
+            callback: (event, button, form) => {
+                return {
+                    dc: Number(readDialogValue(form, ".dc")) ?? 0,
+                    cl: Number(readDialogValue(form, ".cl")) ?? 0,
+                    tl: Number(readDialogValue(form, ".tl")) ?? 0,
+                    idx: Number(readDialogValue(form, "#fob1")),
                 }
-            },
-            cancel: {
-                label: "Cancel",
-                icon: "<i class='fa-solid fa-ban'></i>",
             }
-        },
-        default: "ok"
-    }, {}, {width: 300});
+        }, {
+            action: "cancel",
+            label: "Cancel",
+            icon: "<i class='fa-solid fa-ban'></i>",
+        }],
+        default: "ok",
+        position: {width: 300}
+    });
     if (!dc || !tl || !cl) {
         return
     }
@@ -669,8 +672,8 @@ export async function gmCounteract(actor) {
         return;
     }
 
-    const {isFixed, fixedValue} = await Dialog.wait({
-        title: "Counteract ",
+    const {isFixed, fixedValue} = await foundry.applications.api.DialogV2.wait({
+        window: {title: "Counteract "},
         content: `
             <strong>Fixed value for roll (usually for items)</strong>
             <div style="display: flex">
@@ -683,24 +686,25 @@ export async function gmCounteract(actor) {
                 <input class='fixedValue' type="number" value='0' min=0 style="width: 5ch;">
             </p></div>
         `,
-        buttons: {
-            ok: {
-                label: "Counteract",
-                icon: "<i class='fa-solid fa-hand'></i>",
-                callback: (html) => {
-                    return {
-                        isFixed: html.find('.isFixed').prop("checked"),
-                        fixedValue: !html.find('.isFixed').prop("checked") ? undefined : Number(html.find('.fixedValue').val()) ?? 0,
-                    }
+        buttons: [{
+            action: "ok",
+            label: "Counteract",
+            icon: "<i class='fa-solid fa-hand'></i>",
+            callback: (event, button, form) => {
+                const isFixed = readDialogChecked(form, ".isFixed");
+                return {
+                    isFixed,
+                    fixedValue: !isFixed ? undefined : Number(readDialogValue(form, ".fixedValue")) ?? 0,
                 }
-            },
-            cancel: {
-                label: "Cancel",
-                icon: "<i class='fa-solid fa-ban'></i>",
             }
-        },
-        default: "ok"
-    }, {}, {width: 300});
+        }, {
+            action: "cancel",
+            label: "Cancel",
+            icon: "<i class='fa-solid fa-ban'></i>",
+        }],
+        default: "ok",
+        position: {width: 300}
+    });
     if (isFixed === undefined) {
         return
     }
@@ -792,13 +796,8 @@ export async function showHeroPoints() {
 
     let mData = {
         content,
-        whisper: [game.userId]
-    }
-
-    if (isV12()) {
-        mData.style = CONST.CHAT_MESSAGE_STYLES.OOC;
-    } else {
-        mData.type = CONST.CHAT_MESSAGE_TYPES.OOC;
+        whisper: [game.userId],
+        style: CONST.CHAT_MESSAGE_STYLES.OOC
     }
 
     ChatMessage.create(mData);
@@ -884,11 +883,10 @@ export async function twinFlowingSpiritStrike(actor) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    weapon1: el.find("#fob1").val(),
-                    weapon2: el.find("#fob2").val(),
-                    map: parseInt(el.find("#map").val()),
+                    weapon1: readDialogValue(form, "#fob1"),
+                    weapon2: readDialogValue(form, "#fob2"),
+                    map: parseInt(readDialogValue(form, "#map")),
                 }
             }
         }, {
@@ -992,10 +990,9 @@ export async function distractingPerformance(token) {
         buttons: [{
             action: "ok", label: "Select", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    variant: el.find("#variant").val(),
-                    ally: el.find("#ally").val(),
+                    variant: readDialogValue(form, "#variant"),
+                    ally: readDialogValue(form, "#ally"),
                 }
 
             }
@@ -1202,9 +1199,8 @@ export async function changeAlliance() {
         buttons: [{
             action: "ok", label: "Select", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    map: el.find("#map").val(),
+                    map: readDialogValue(form, "#map"),
                 }
             }
         }, {
@@ -1232,30 +1228,24 @@ export async function changeAlliance() {
 
 export async function formUp(token) {
     if (!game.user.isGM) {
-        ui.notifications.warn("Only GM can run script");
+        ui.notifications.warn(translate("onlyGM"));
         return
     }
     if (!token) {
-        ui.notifications.warn("Please select a token to form up a troop.");
-        return;
-    }
-    if (!token.document?.flags?.pf2e?.troop?.id) {
-        ui.notifications.warn("Please select a troop token.");
+        ui.notifications.warn(translate("selectFormUp"));
         return;
     }
     let canvasDistance = canvas.dimensions?.size ?? 100
-
-    const tokensForUpdate = token.scene.tokens.contents
-        .filter(t => t !== token.document)
-        .filter(t => t?.flags?.pf2e?.troop?.id === token.document?.flags?.pf2e?.troop?.id)
-        .map(t => t.object)
-
+    const tokensForUpdate = [...token.actor.otherSegments, token.actor]
+        .map(a => a.getActiveTokens())
+        .flat()
+        .filter(t => t !== token);
     const occupied = token.scene.tokens
         .filter(t => !tokensForUpdate.includes(t.object) && t.object !== token)
         .map(t => getAllCoordinates(t.x, t.y, t.width)).flat()
         .map(a => JSON.stringify(a));
 
-    let step = canvasDistance * 2
+    let step = canvasDistance * 2;
 
     let newPossibleLocations = foundry.utils.deepClone(newCoords).map(c => {
         return {
@@ -1291,4 +1281,5 @@ export async function formUp(token) {
         let nn = availableLocations.shift();
         await ttt.document.update({x: nn.x, y: nn.y})
     }
+    ui.notifications.info("Troop formed Up");
 }

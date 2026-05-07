@@ -11,8 +11,8 @@ import {
     getMap,
     hasFeatBySourceId,
     increaseConditionForActor,
-    isV12,
     otherModulesAutoRoll,
+    readDialogValue,
     rollSkipDialog,
     selectIf,
     setEffectToActor,
@@ -104,11 +104,10 @@ export async function doubleSlice(actor) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    map: parseInt(el.find("#map").val()),
-                    weapon1: parseInt(el.find("#fob1").val()),
-                    weapon2: parseInt(el.find("#fob2").val()),
+                    map: parseInt(readDialogValue(form, "#map")),
+                    weapon1: parseInt(readDialogValue(form, "#fob1")),
+                    weapon2: parseInt(readDialogValue(form, "#fob2")),
                 }
             }
         }, {
@@ -384,7 +383,7 @@ export async function certainStrike(actor) {
     const damages = [];
 
     function PD(cm) {
-        if (cm.user.id === game.userId && cm.isDamageRoll) {
+        if (cm.author.id === game.userId && cm.isDamageRoll) {
             damages.push(cm);
             return false;
         }
@@ -476,7 +475,7 @@ export async function swipe(token) {
         return;
     }
     let actor = token.actor;
-    if (!hasFeatBySourceId(actor, "Compendium.pf2e.feats-srd.Item.JbrVcOf82oFXk3mY")) {//swipe
+    if (!hasFeatBySourceId(actor, "Compendium.pf2e.feats-srd.Item.JbrVcOf82oFXk3mY")) {
         ui.notifications.warn(`${actor.name} does not have Swipe!`);
         return;
     }
@@ -498,29 +497,28 @@ export async function swipe(token) {
         weaponOptions += `<option value=${w.item.id}>${w.item.name}</option>`
     }
 
-    const {currentWeapon, map} = await Dialog.wait({
-        title: "sweep",
+    const {currentWeapon, map} = await foundry.applications.api.DialogV2.wait({
+        window: {title: "sweep"},
         content: `
             <div><div><h3>Attack</h3><select id="fob1" autofocus>
                 ${weaponOptions}
             </select></div></div>${getMap()}
         `,
-        buttons: {
-            ok: {
-                label: "Attack",
-                icon: "<i class='fa-solid fa-hand-fist'></i>",
-                callback: (html) => {
-                    return {
-                        currentWeapon: html[0].querySelector("#fob1").value,
-                        map: parseInt(html[0].querySelector("#map").value)
-                    }
+        buttons: [{
+            action: "ok",
+            label: "Attack",
+            icon: "<i class='fa-solid fa-hand-fist'></i>",
+            callback: (event, button, form) => {
+                return {
+                    currentWeapon: readDialogValue(form, "#fob1"),
+                    map: parseInt(readDialogValue(form, "#map"))
                 }
-            },
-            cancel: {
-                label: "Cancel",
-                icon: "<i class='fa-solid fa-ban'></i>",
             }
-        },
+        }, {
+            action: "cancel",
+            label: "Cancel",
+            icon: "<i class='fa-solid fa-ban'></i>",
+        }],
         default: "ok"
     });
 
@@ -528,7 +526,6 @@ export async function swipe(token) {
         return;
     }
     let weapon = actor.system.actions.find(w => w.item.id === currentWeapon);
-    let hasSweep = weapon?.item?.traits?.has('sweep')
 
     let reach = actor.getReach({action: "attack", weapon: weapon.item})
     let additionalTargets = token.scene.tokens.filter(t => t.actor !== actor)
@@ -544,26 +541,25 @@ export async function swipe(token) {
             tokenOptions += `<option value=${t.id}>${t.name}</option>`
         }
 
-        const {currentToken} = await Dialog.wait({
-            title: "Choose additional target",
+        const {currentToken} = await foundry.applications.api.DialogV2.wait({
+            window: {title: "Choose additional target"},
             content: `
                 <div><div><h3>Target</h3><select id="fob1" autofocus>
                     ${tokenOptions}
                 </select></div></div<hr>
             `,
-            buttons: {
-                ok: {
-                    label: "Attack",
-                    icon: "<i class='fa-solid fa-hand-fist'></i>",
-                    callback: (html) => {
-                        return {currentToken: html[0].querySelector("#fob1").value}
-                    }
-                },
-                cancel: {
-                    label: "Cancel",
-                    icon: "<i class='fa-solid fa-ban'></i>",
+            buttons: [{
+                action: "ok",
+                label: "Attack",
+                icon: "<i class='fa-solid fa-hand-fist'></i>",
+                callback: (event, button, form) => {
+                    return {currentToken: readDialogValue(form, "#fob1")}
                 }
-            },
+            }, {
+                action: "cancel",
+                label: "Cancel",
+                icon: "<i class='fa-solid fa-ban'></i>",
+            }],
             default: "ok"
         });
 
@@ -579,7 +575,7 @@ export async function swipe(token) {
     let statisticModifier = weapon.variants[map]
 
     function PD(cm) {
-        if ((cm.author.id || cm.user.id) === game.userId && cm.isDamageRoll) {
+        if (cm.author.id === game.userId && cm.isDamageRoll) {
             damages = cm;
             return false;
         }
@@ -600,10 +596,10 @@ export async function swipe(token) {
             let needToRoll = !otherModulesAutoRoll(message);
             if (needToRoll) {
                 if (outcome === 'success') {
-                    await primary.damage({event: eventSkipped(event, true), options: fOpt});
+                    await weapon.damage({event: eventSkipped(event, true), options: []});
                 }
                 if (outcome === 'criticalSuccess') {
-                    await primary.critical({event: eventSkipped(event, true), options: fOpt});
+                    await weapon.critical({event: eventSkipped(event, true), options: []});
                 }
             } else {
                 console.log('Waiting for workbench auto roll damage')
@@ -741,11 +737,10 @@ export async function overwhelmingCombination(actor) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    map: parseInt(el.find("#map").val()),
-                    weapon1: el.find("#fob1").val(),
-                    weapon2: el.find("#fob2").val(),
+                    map: parseInt(readDialogValue(form, "#map")),
+                    weapon1: readDialogValue(form, "#fob1"),
+                    weapon2: readDialogValue(form, "#fob2"),
                 }
             }
         }, {

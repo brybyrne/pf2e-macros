@@ -42,7 +42,7 @@ export async function accidentalShot(actor) {
 
     const damages = [];
     function PD(cm) {
-        if ( cm.user.id === game.userId && cm.isDamageRoll) {
+        if ( cm.author.id === game.userId && cm.isDamageRoll) {
             damages.push(cm);
             return false;
         }

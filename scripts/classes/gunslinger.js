@@ -5,7 +5,7 @@ import {
     combinedDamage,
     eventSkipped,
     getMap,
-    hasEffectBySourceId, isV12
+    hasEffectBySourceId, readDialogValue
 } from "../lib.js";
 import {targetIsOffGuard} from "./general.js";
 
@@ -169,11 +169,10 @@ export async function swordAndPistol(actor) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    map: parseInt(el.find("#map").val()),
-                    first: parseInt(el.find("#fob1").val()),
-                    second: parseInt(el.find("#fob2").val()),
+                    map: parseInt(readDialogValue(form, "#map")),
+                    first: parseInt(readDialogValue(form, "#fob1")),
+                    second: parseInt(readDialogValue(form, "#fob2")),
                 }
             }
 
@@ -275,7 +274,7 @@ export async function triggerbrandSalvo(actor) {
 
     let weaponOptions = weapons.map((w, i) => `<option value=${i}>${w.item.name}</option>`).join('')
 
-    const {currentWeapon, map} = await baseAttackWeaponForm("Stab and Blast", weaponOptions)
+    const {currentWeapon, map} = await baseAttackWeaponForm("Triggerbrand Salvo", weaponOptions)
     if (currentWeapon === undefined || map === undefined) {
         return;
     }

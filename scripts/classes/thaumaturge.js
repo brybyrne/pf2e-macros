@@ -3,7 +3,7 @@ import {
     actorFeat,
     deleteItem,
     distanceIsCorrect,
-    hasEffectBySourceId, isV12,
+    hasEffectBySourceId, readDialogValue,
     removeConditionFromActor,
     rollAllRecovery,
     setEffectToActor
@@ -40,8 +40,7 @@ export async function rootToLife(actor) {
         buttons: [{
             action: "ok", label: "Use", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
-                return {action: parseInt(el.find("#map").val())}
+                return {action: parseInt(readDialogValue(form, "#map"))}
 
             }
         }, {

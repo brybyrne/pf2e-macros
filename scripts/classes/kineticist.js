@@ -1,4 +1,4 @@
-import {actorFeat, getMap, isV12, until} from "../lib.js";
+import {actorFeat, getMap, readDialogChecked, readDialogValue, until} from "../lib.js";
 import {DamageRoll} from "../hooks/init.js";
 
 async function getDataEBRoll(eb, element) {
@@ -21,8 +21,7 @@ async function getDataEBRoll(eb, element) {
             yes: {
                 action: "ok", label: "Select", icon: "<i class='fa-solid fa-hand-fist'></i>",
                 callback: (event, button, form) => {
-                    let el = isV12() ? $(form) : $(form.element);
-                    return el.find("#dt").val()
+                    return readDialogValue(form, "#dt")
                 }
             }
         });
@@ -71,12 +70,11 @@ export async function twoElementInfusion(actor) {
         yes: {
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    el1: el.find("#el1").val(),
-                    el2: el.find("#el2").val(),
-                    mapIncreases: parseInt(el.find("#map")?.val()),
-                    melee: !el.find('#melee').prop("checked")
+                    el1: readDialogValue(form, "#el1"),
+                    el2: readDialogValue(form, "#el2"),
+                    mapIncreases: parseInt(readDialogValue(form, "#map")),
+                    melee: !readDialogChecked(form, "#melee")
                 }
             }
         },
@@ -117,7 +115,7 @@ export async function twoElementInfusion(actor) {
     let damages = []
 
     function PD(cm) {
-        if ((cm.author.id || cm.user.id) === game.userId && cm.isDamageRoll) {
+        if (cm.author.id === game.userId && cm.isDamageRoll) {
             damages.push(cm);
             return false;
         }

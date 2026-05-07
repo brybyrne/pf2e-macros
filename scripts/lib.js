@@ -2,10 +2,6 @@ import {socketlibSocket} from "./hooks/setup.js";
 import {dcByLevel, moduleName, TO_AVERAGE_DMG} from "./const.js";
 import {ArithmeticExpression, DamageInstance, DamageRoll, InstancePool} from "./hooks/init.js";
 
-export function isV12() {
-    return game.release.generation < 13
-}
-
 export function eventSkipped(event, isDamage = false) {
     return game.settings.get(moduleName, "skipRollDialogMacro")
         ? new KeyboardEvent('keydown', {'shiftKey': isDamage ? game.user.flags.pf2e.settings.showDamageDialogs : game.user.flags.pf2e.settings.showCheckDialogs})
@@ -79,6 +75,40 @@ export function hasPermissions(item) {
     return item.canUserModify(game.user, "update");
 }
 
+export function getDialogElement(form) {
+    if (!form) {
+        return null;
+    }
+
+    if (form.element instanceof HTMLElement) {
+        return form.element;
+    }
+
+    if (form instanceof HTMLElement) {
+        return form;
+    }
+
+    if (form[0] instanceof HTMLElement) {
+        return form[0];
+    }
+
+    return null;
+}
+
+export function readDialogValue(form, selector) {
+    return getDialogElement(form)?.querySelector(selector)?.value;
+}
+
+export function readDialogChecked(form, selector) {
+    return !!getDialogElement(form)?.querySelector(selector)?.checked;
+}
+
+export function readDialogSelectedDataset(form, selector, key) {
+    return getDialogElement(form)
+        ?.querySelector(`${selector} option:checked`)
+        ?.dataset?.[key];
+}
+
 export async function setEffectToActorId(actorId, effUuid, level = undefined, optionalData) {
     await setEffectToActor(await fromUuid(actorId), effUuid, level, optionalData);
 }
@@ -125,14 +155,14 @@ export async function combinedDamage(name, primary, secondary, options, map, map
     const attacks = [];
 
     function PD(cm) {
-        if ((cm.author.id === game.userId || cm.user.id === game.userId) && cm.isDamageRoll) {
+        if (cm.author.id === game.userId && cm.isDamageRoll) {
             damages.push(cm);
             return false;
         }
     }
 
     function PRoll(cm) {
-        if ((cm.author.id === game.userId || cm.user.id === game.userId) && !cm.isDamageRoll && cm.isRoll && cm.flags?.pf2e?.origin && cm.flags?.pf2e?.context) {
+        if (cm.author.id === game.userId && !cm.isDamageRoll && cm.isRoll && cm.flags?.pf2e?.origin && cm.flags?.pf2e?.context) {
             attacks.push(cm);
         }
     }
@@ -268,13 +298,9 @@ export async function combinedDamage(name, primary, secondary, options, map, map
 
         if (damages.length === 0) {
             let mData = {
-                content: "Both attacks missed"
+                content: "Both attacks missed",
+                style: CONST.CHAT_MESSAGE_STYLES.OOC
             };
-            if (isV12()) {
-                mData.style = CONST.CHAT_MESSAGE_STYLES.OOC;
-            } else {
-                mData.type = CONST.CHAT_MESSAGE_TYPES.OOC;
-            }
             ChatMessage.create(mData);
             Hooks.off('preCreateChatMessage', hookId);
             Hooks.off('preCreateChatMessage', hookIdRoll);
@@ -380,11 +406,8 @@ export async function combinedDamage(name, primary, secondary, options, map, map
             rolls,
             flavor,
             speaker: ChatMessage.getSpeaker(),
+            style: CONST.CHAT_MESSAGE_STYLES.OTHER,
         };
-
-        if (!isV12()) {
-            messageData.type = CONST.CHAT_MESSAGE_TYPES.ROLL;
-        }
 
         if (originF && originS && originF === originS) {
             messageData.flags.pf2e.origin = originF;
@@ -618,8 +641,8 @@ export async function setEffectToActor(
 
 export function distanceIsCorrect(firstT, secondT, distance) {
     return (
-        (firstT instanceof Token ? firstT : firstT.object).distanceTo(
-            secondT instanceof Token ? secondT : secondT.object
+        (firstT instanceof foundry.canvas.placeables.Token ? firstT : firstT.object).distanceTo(
+            secondT instanceof foundry.canvas.placeables.Token ? secondT : secondT.object
         ) <= distance
     );
 }
@@ -771,11 +794,9 @@ export async function baseAttackWeaponForm(title, weaponOptions) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
-
                 return {
-                    map: parseInt(el.find("#map").val()),
-                    currentWeapon: el.find("#fob1").val(),
+                    map: parseInt(readDialogValue(form, "#map")),
+                    currentWeapon: readDialogValue(form, "#fob1"),
                 }
             }
         }, {
@@ -796,9 +817,8 @@ export async function baseMapForm(title) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    map: parseInt(el.find("#map").val()),
+                    map: parseInt(readDialogValue(form, "#map")),
                 }
             }
         }, {

@@ -1,4 +1,4 @@
-import {actorAction, actorFeat, combinedDamage, favoriteWeapon, getMap, isV12, selectIf} from "../lib.js";
+import {actorAction, actorFeat, combinedDamage, favoriteWeapon, getDialogElement, readDialogValue, getMap, selectIf} from "../lib.js";
 
 function flurryOfBlowsWeapons(actor) {
     let weapons = actor.system.actions
@@ -94,11 +94,13 @@ export async function flurryOfBlows(actor) {
         buttons: [{
             action: "ok", label: "Attack", icon: "<i class='fa-solid fa-hand-fist'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
+                const dialog = getDialogElement(form);
+                const first = dialog?.querySelector("#fob1");
+                const second = dialog?.querySelector("#fob2");
                 return {
-                    weapon1: [el.find("#fob1").val(), el.find("#fob1").find(':selected').attr('data-ranged') === 'true', el.find("#fob1").find(':selected').attr('data-slug')],
-                    weapon2: [el.find("#fob2").val(), el.find("#fob2").find(':selected').attr('data-ranged') === 'true', el.find("#fob2").find(':selected').attr('data-slug')],
-                    map: parseInt(el.find("#map").val()),
+                    weapon1: [first?.value, first?.selectedOptions?.[0]?.dataset?.ranged === "true", first?.selectedOptions?.[0]?.dataset?.slug],
+                    weapon2: [second?.value, second?.selectedOptions?.[0]?.dataset?.ranged === "true", second?.selectedOptions?.[0]?.dataset?.slug],
+                    map: parseInt(readDialogValue(form, "#map")),
                 }
             }
         }, {

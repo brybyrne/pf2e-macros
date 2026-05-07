@@ -1,5 +1,5 @@
 import {moduleName} from "../const.js";
-import {isV12, rollSkipDialog, veryHardDCByLvl} from "../lib.js";
+import {readDialogValue, rollSkipDialog, veryHardDCByLvl} from "../lib.js";
 
 export async function inspireHeroics(actor) {
     if (!actor) {
@@ -7,8 +7,8 @@ export async function inspireHeroics(actor) {
         return;
     }
 
-    if (!actor.itemTypes.spell.find(a => a.slug === "inspire-heroics") && !actor.itemTypes.spell.find(a => a.slug === "fortissimo-composition")) {
-        ui.notifications.warn(`${actor.name} does not have Inspire Heroics/Fortissimo Composition spell!`);
+    if (!actor.itemTypes.spell.find(a => a.slug === "fortissimo-composition")) {
+        ui.notifications.warn(`${actor.name} does not have Fortissimo Composition spell!`);
         return;
     }
 
@@ -33,10 +33,9 @@ export async function inspireHeroics(actor) {
         buttons: [{
             action: "ok", label: "Cast", icon: "<i class='fa-solid fa-magic'></i>",
             callback: (event, button, form) => {
-                let el = isV12() ? $(form) : $(form.element);
                 return {
-                    dc: parseInt(el.find("#spell-dc").val()),
-                    spell: parseInt(el.find("#spells").val())
+                    dc: parseInt(readDialogValue(form, "#spell-dc")),
+                    spell: parseInt(readDialogValue(form, "#spells"))
                 }
             }
         }, {

@@ -1,14 +1,34 @@
 import {moduleName} from "../const.js";
 
-export class RepairForm extends FormApplication {
+const {ApplicationV2, HandlebarsApplicationMixin} = foundry.applications.api;
+
+export class RepairForm extends HandlebarsApplicationMixin(ApplicationV2) {
+    static DEFAULT_OPTIONS = {
+        id: `${moduleName}-repair`,
+        classes: [moduleName],
+        position: {
+            width: 500
+        },
+        window: {
+            title: "Repair items"
+        }
+    };
+
+    static PARTS = {
+        form: {
+            root: true,
+            template: `modules/${moduleName}/templates/repair.hbs`
+        }
+    };
+
     constructor(actor, items) {
-        super({});
+        super();
         this.actor = actor;
         this.items = items;
     }
 
-    async getData() {
-        return foundry.utils.mergeObject(super.getData(), {
+    async _prepareContext() {
+        return {
             items: this.items.map(i=>{
                 return {
                     item: i.name,
@@ -17,34 +37,16 @@ export class RepairForm extends FormApplication {
                     uuid: i.uuid,
                 }
             })
-        });
+        };
     }
 
-    static get defaultOptions() {
-        return foundry.utils.mergeObject(super.defaultOptions, {
-            title: "Repair items",
-            id: `${moduleName}-repair`,
-            classes: [moduleName],
-            template: `modules/${moduleName}/templates/repair.hbs`,
-            width: 500,
-            height: 'auto',
-            closeOnSubmit: false,
-            submitOnChange: false,
-            resizable: true,
-            dragDrop: [],
+    async _onRender(context, options) {
+        await super._onRender(context, options);
+        this.element.querySelectorAll(".repair-item").forEach((button) => {
+            button.addEventListener("click", () => {
+                const uuid = button.dataset.uuid;
+                game.pf2e.actions.repair({uuid});
+            });
         });
-    }
-
-
-    activateListeners($html) {
-        super.activateListeners($html);
-
-        let actor = this.actor;
-
-        $html.on('click', '.repair-item', (e)=> {
-            let uuid = $(e.target).data('uuid');
-            game.pf2e.actions.repair({uuid})
-        })
-
     }
 }
