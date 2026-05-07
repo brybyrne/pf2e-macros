@@ -1,3 +1,6 @@
+### Version 1.1.1
+- fix download link
+
 ### Version 1.1.0
 - V14
 
